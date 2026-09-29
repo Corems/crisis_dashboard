@@ -1,0 +1,37 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/html/crisis_dashboard
+
+            echo "=== git pull ==="
+            git pull origin main
+
+            echo "=== backend deps ==="
+            source backend/venv/bin/activate
+            pip install -r backend/requirements.txt --quiet
+
+            echo "=== restart backend ==="
+            sudo systemctl restart crisis-backend
+            sudo systemctl restart crisis-celery-worker
+            sudo systemctl restart crisis-celery-beat
+
+            echo "=== done ==="
